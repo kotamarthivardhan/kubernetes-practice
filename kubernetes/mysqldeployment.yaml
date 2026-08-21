@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: demo-app-mysql-Deployment
+  namespace: app-demo
+
+spec:
+  replicas: 2
+  selector:
+    matchLables:
+      app: demo-app-mysql-deployment
+  
+  template:
+    metadata:
+        app: demo-app-mysql-deployment
+
+    containers:
+      - name: demo-app-mysql-container
+        image: mysql:8.0
+        ports:
+          - containerPort: 3306
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+            secretKeyRef:
+              name: demo-app-mysql-Secret
+              key: MYSQL_ROOT_PASSWORD
+          - name: MYSQL_PASSWORD
+            valueFrom:
+            secretKeyRef:
+              name: demo-app-mysql-Secret
+              key: MYSQL_PASSWORD
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: demo-app-mysql-ConfigMap
+                key: MYSQL_DATABASE
+          - name: MYSQL_USER
+            valueFrom:
+              configMapKeyRef:
+                name: demo-app-mysql-ConfigMap
+                key: MYSQL_USER
+    volumeMounts:
+      - name: demo-app-mysql-mount
+        mountpath: /var/lib/mysql
+  
+  volumeMounts:
+    - name: demo-app-mysql-mount
+      persistentVolumeClaim:
+        claimName: demo-app-mysql-pvc
