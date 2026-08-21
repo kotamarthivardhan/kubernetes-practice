@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>DevOps Kubernetes Demo</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            margin: 40px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #result {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Docker + Kubernetes Demo</h1>
+
+    <p>
+        This application is running using:
+    </p>
+
+    <ul>
+        <li>Frontend - Nginx</li>
+        <li>Backend - Node.js</li>
+        <li>Database - MySQL</li>
+    </ul>
+
+    <button onclick="getUsers()">
+        Get Users
+    </button>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+async function getUsers() {
+
+    const response =
+        await fetch("/api/users");
+
+    const users =
+        await response.json();
+
+    let html = "<h2>Users</h2>";
+
+    users.forEach(user => {
+
+        html += `
+            <p>
+                ${user.id} -
+                ${user.name} -
+                ${user.email}
+            </p>
+        `;
+
+    });
+
+    document.getElementById("result").innerHTML = html;
+}
+
+</script>
+
+</body>
+
+</html>
