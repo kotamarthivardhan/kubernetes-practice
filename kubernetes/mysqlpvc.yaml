@@ -1,8 +1,9 @@
-apiversion: v1
-kind: persistentVolumeClaim 
+apiVersion: v1
+kind: PersistentVolumeClaim
 metadata:
   name: demo-app-mysql-pvc
   namespace: app-demo
+  
 spec:
   accessModes:
     - ReadWriteOnce
