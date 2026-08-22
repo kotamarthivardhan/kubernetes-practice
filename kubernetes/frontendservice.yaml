@@ -3,11 +3,10 @@ kind: Service
 metadata:
   name: frontend-network-service
   namespace: app-demo
-selector:
+spec:
   type: NodePort
-  spec:
-    selector:
-      app: frontend
-    ports:
-      - port: 80
-        targetPort: 80
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
