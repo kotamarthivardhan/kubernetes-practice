@@ -4,7 +4,7 @@ metadata:
   name: frontend-deployment
   namespace: app-demo
 spec:
-  replicas: 2 
+  replicas: 1 
   selector:
     matchLabels:
       app: frontend
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: vardhankotamrthi/kubernetes-practice-frontend:v1
+          image: vardhankotamrthi/kubernetes-practice-frontend:1.0
           imagePullPolicy: Always
           resources:
             requests:

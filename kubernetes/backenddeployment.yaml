@@ -4,7 +4,7 @@ metadata:
   name: backend-deployment
   namespace: app-demo 
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: backend-demoapp
-          image: vardhankotamrthi/kubernetes-practice-backend:v1
+          image: vardhankotamrthi/kubernetes-practice-backend:1.0
           imagePullPolicy: Always
           resources:
             requests:
@@ -50,16 +50,18 @@ spec:
             - name: MYSQL_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-secret
+                  name: demo-app-mysql-secret
                   key: MYSQL_PASSWORD       
           readinessProbe:
-            httpGet: /health
-            port: 5000
+            httpGet:
+              path: /health
+              port: 5000
             initialDelaySeconds: 30
             periodSeconds: 10
           livenessProbe:
-            httpGet: /health
-            port: 5000
+            httpGet: 
+              path: /health
+              port: 5000
             initialDelaySeconds: 30
             periodSeconds: 10
         
