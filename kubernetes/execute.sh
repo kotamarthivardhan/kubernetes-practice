@@ -1,1 +1,0 @@
-kubectl apply -f namespace.yaml -f mysqlsecrets.yaml -f mysqlconfigmap.yaml -f mysqlpv.yaml -f mysqlpvc.yaml -f mysqldeployment.yaml -f mysqlservice -f backendconfigmap.yaml -f backenddeployment.yaml  -f backendservice.yaml -f frontenddeployment.yaml -f frontendservice.yaml
