@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service   
 metadata:
-  name: frontend-network-service
+  name: frontend
   namespace: app-demo
 spec:
   type: NodePort
