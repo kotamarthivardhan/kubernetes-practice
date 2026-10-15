@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: app-demo 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+
+  template:
+    metadata:
+      labels:
+        app: backend
+
+    spec:
+      containers:
+        - name: backend-demoapp
+          image: vardhankotamrthi/kubernetes-practice-backend:1.0
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_HOST
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_USER
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: DB_NAME
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: backend-configmap
+                  key: APP_ENV
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: demo-app-mysql-secret
+                  key: MYSQL_PASSWORD       
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: 
+              path: /health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+        
