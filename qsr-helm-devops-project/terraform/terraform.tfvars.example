@@ -1,0 +1,27 @@
+aws_region        = "ap-south-1"
+project_name      = "qsr"
+environment       = "prod"
+vpc_cidr          = "10.40.0.0/16"
+cluster_version   = "1.34"
+
+# Replace with your current public IPv4 CIDR. Find it with a trusted IP-check service.
+# Never use 0.0.0.0/0 for the EKS API endpoint.
+admin_cidr_blocks = ["203.0.113.10/32"]
+
+# GitHub owner/org and application repository.
+github_org      = "YOUR_GITHUB_ORG_OR_USERNAME"
+github_app_repo = "qsr-app"
+github_branch   = "main"
+
+ecr_repository_name = "qsr-orders-api"
+
+# If this AWS account already has the GitHub OIDC provider, set false.
+create_github_oidc_provider = true
+
+install_argocd        = true
+install_observability = true
+
+node_instance_types = ["t3.large"]
+node_desired_size   = 2
+node_min_size       = 2
+node_max_size       = 4

@@ -1,0 +1,12 @@
+QSR Orders API release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Inspect resources:
+  kubectl -n {{ .Release.Namespace }} get deploy,pods,svc
+
+Port-forward:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "qsr-orders.fullname" . }} 8080:{{ .Values.service.port }}
+
+Test:
+  curl http://localhost:8080/health
+  curl http://localhost:8080/metrics

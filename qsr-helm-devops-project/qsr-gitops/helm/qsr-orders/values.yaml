@@ -1,0 +1,65 @@
+replicaCount: 2
+image:
+  repository: qsr-orders-api
+  pullPolicy: IfNotPresent
+  tag: "replace-before-first-sync"
+nameOverride: ""
+fullnameOverride: ""
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+containerPort: 8080
+env:
+  APP_VERSION: "gitops-managed"
+  LOG_LEVEL: "INFO"
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+probes:
+  startup:
+    enabled: true
+    path: /health
+    failureThreshold: 12
+    periodSeconds: 5
+  liveness:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: /ready
+    initialDelaySeconds: 3
+    periodSeconds: 5
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+serviceAccount:
+  create: false
+  name: ""
+  automount: false
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack
+  interval: 30s
+  path: /metrics
+nodeSelector: {}
+tolerations: []
+affinity: {}

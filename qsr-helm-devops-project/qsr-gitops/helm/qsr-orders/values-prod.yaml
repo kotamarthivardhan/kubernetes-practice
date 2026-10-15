@@ -1,0 +1,16 @@
+replicaCount: 2
+image:
+  repository: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qsr-orders-api
+  tag: "replace-with-a-real-commit-sha"
+  pullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    release: kube-prometheus-stack

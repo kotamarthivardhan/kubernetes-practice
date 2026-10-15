@@ -1,0 +1,155 @@
+name: QSR CI and GitOps promotion
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qsr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  quality-and-security:
+    name: Unit tests, quality and security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Unit tests
+        run: pytest --junitxml=test-results.xml
+
+      - name: Static code analysis
+        run: ruff check .
+
+      - name: Python security lint
+        run: bandit -q -r app.py
+
+      - name: Dependency vulnerability scan (SCA)
+        run: pip-audit -r requirements.txt
+
+      - name: Filesystem and IaC/container config scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  build-scan-push:
+    name: Build, scan and push to ECR
+    needs: quality-and-security
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout application
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          docker build --pull             --label org.opencontainers.image.source="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"             --label org.opencontainers.image.revision="${GITHUB_SHA}"             -t "$REGISTRY/$REPOSITORY:$IMAGE_TAG" .
+
+      - name: Scan built image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          format: table
+          vuln-type: os,library
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+        continue-on-error: false
+
+      - name: Push SHA-tagged image to ECR
+        if: github.ref == 'refs/heads/main'
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: docker push "$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+      - name: Update Helm image values in GitOps repository
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          GITOPS_REPOSITORY: ${{ vars.GITOPS_REPOSITORY }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITOPS_REPOSITORY}.git" gitops
+          cd gitops
+          git config user.name "qsr-ci-bot"
+          git config user.email "qsr-ci-bot@users.noreply.github.com"
+          export IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          path = Path("helm/qsr-orders/values-prod.yaml")
+          lines = path.read_text().splitlines()
+          in_image = False
+          found_repo = found_tag = False
+          output = []
+          for line in lines:
+              if line and not line.startswith(" "):
+                  in_image = line.strip() == "image:"
+              if in_image and line.strip().startswith("repository:"):
+                  indent = line[:len(line) - len(line.lstrip())]
+                  output.append(f"{indent}repository: {os.environ['IMAGE_URI']}")
+                  found_repo = True
+              elif in_image and line.strip().startswith("tag:"):
+                  indent = line[:len(line) - len(line.lstrip())]
+                  output.append(f'{indent}tag: "{os.environ["GITHUB_SHA"]}"')
+                  found_tag = True
+              else:
+                  output.append(line)
+          if not found_repo or not found_tag:
+              raise SystemExit("Could not find image.repository and image.tag in values-prod.yaml")
+          path.write_text("\n".join(output) + "\n")
+          PY
+          git add helm/qsr-orders/values-prod.yaml
+          if git diff --cached --quiet; then
+            echo "GitOps image values are already current."
+          else
+            git commit -m "chore(qsr): deploy ${GITHUB_SHA}"
+            git push
+          fi
